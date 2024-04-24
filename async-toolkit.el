@@ -184,6 +184,17 @@ Uses `enable-async-save-some-buffers-advice` to determine behavior."
   "Timer used to schedule `save-all-buffers`.")
 
 ;;;###autoload
+(defun async-save-all-buffers ()
+  "Save all buffers that are associated with a file and have been modified."
+  (interactive)
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (and (buffer-file-name) (buffer-modified-p))
+        (org-updated-timestamp)
+        (increment-review-counter)
+         (async-external-save-buffer)))))
+
+;;;###autoload
 (defun enable-auto-save-all-buffers ()
   "Enable automatic saving of all modified file buffers."
   (interactive)
@@ -193,7 +204,7 @@ Uses `enable-async-save-some-buffers-advice` to determine behavior."
       (cancel-timer auto-save-all-timers-timer))
     ;; 新しいタイマーを設定
     (setq auto-save-all-timers-timer
-          (run-with-idle-timer auto-save-all-buffers-interval t 'save-all-buffers))))
+          (run-with-idle-timer auto-save-all-buffers-interval t 'async-save-all-buffers))))
 
 (defun toggle-auto-save-all-buffers ()
   "Toggle the automatic saving of all buffers."
