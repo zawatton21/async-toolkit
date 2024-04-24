@@ -1,4 +1,4 @@
-;;; async-emacs-toolkit.el --- Asynchronous file and buffer operations for Emacs
+;;; async-toolkit.el --- Asynchronous file and buffer operations for Emacs
 
 ;; Copyright (C) 2024
 
@@ -281,6 +281,6 @@ Uses `enable-async-save-some-buffers-advice` to determine behavior."
 
 (advice-add 'revert-buffer :around #'async-revert-advice)
 
-(provide 'async-emacs-toolkit)
+(provide 'async-toolkit)
 
 ;;; async-emacs-toolkit.el ends here
