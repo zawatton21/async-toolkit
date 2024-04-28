@@ -47,6 +47,57 @@
        (file-exists-p (concat buffer-file-name ".#"))))
 
 ;;;###autoload
+(defun async-external-save-buffer ()
+  "Save the current buffer using an external process asynchronously and measure elapsed time for debugging."
+  (interactive)
+  (require 'cl-lib)
+  (require 'async)
+
+  (unless (buffer-file-name)
+    (message "Buffer is not associated with a file. Skipping external save.")
+    ;;(cl-return-from async-external-save-buffer)
+)
+  (run-hooks 'before-save-hook)
+  (let* ((start-time (current-time))
+         (file-name (buffer-file-name))
+         (buf-content (buffer-string))
+         (temp-file (make-temp-file "emacs-external-save" nil ".tmp" buf-content)))
+
+    (let* ((win-temp-file (replace-regexp-in-string "/" "\\\\" temp-file))
+           (win-file-name (replace-regexp-in-string "/" "\\\\" file-name))
+           (cmd (if (eq system-type 'windows-nt)
+                    (format "move /Y \"%s\" \"%s\"" (shell-quote-argument win-temp-file) (shell-quote-argument win-file-name))
+                  (format "mv %s %s" (shell-quote-argument temp-file) (shell-quote-argument file-name)))))
+
+      ;; Convert file paths for Windows, if necessary
+      (when (eq system-type 'windows-nt)
+        (setq win-temp-file (encode-coding-string win-temp-file 'utf-8)
+              win-file-name (encode-coding-string win-file-name 'utf-8)))
+
+      ;; Use async-start to run the shell command asynchronously
+      (async-start
+       `(lambda ()
+          (shell-command ,cmd))
+       `(lambda (result)
+          (if (= result 0)
+              (progn
+                ;;(message "Buffer saved using external process asynchronously.")
+                (with-current-buffer ,(current-buffer)
+                  ;; Update the buffer's file modification time to the latest
+                  (let ((new-modtime (nth 5 (file-attributes ,file-name))))
+                    (set-visited-file-modtime new-modtime))
+                  (revert-buffer t t t)
+                  (set-buffer-modified-p nil)
+                  (run-hooks 'after-save-hook))
+                ;; Clean up the temporary file
+                (delete-file ,temp-file)
+                (message "Async saved: %s" ,file-name))
+            ;; If the operation failed, display the output buffer for diagnostics
+            (with-current-buffer (get-buffer-create "*External Save Output*")
+              (insert "Error during external save: " (number-to-string result))
+              (display-buffer (current-buffer)))))))))
+
+;;;###autoload
 (defun async-save-buffer-internal (orig-func &rest args)
   "Advice to optionally redirect `save-buffer` based on `enable-async-save-buffer-advice`."
   (if (not enable-async-save-buffer-advice)
