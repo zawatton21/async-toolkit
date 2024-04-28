@@ -1,5 +1,5 @@
 (package "async-toolkit"
-         "1.0.0"
+         "v1.0.3"
          "")
 
 (website-url "https://github.com/zawatton21/async-toolkit")
